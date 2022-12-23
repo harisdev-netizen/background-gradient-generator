@@ -232,3 +232,182 @@ const getCursorPosition = (e) => {
     return isZero;
   } else return { x, y };
 };
+
+const getCircleQuarter = (x, y) => {
+  if (Math.sign(x) === 1 && Math.sign(y) === 1) {
+    // First Quarter (0° to 90°)
+    return { x, y, quarter: 1 };
+  } else if (Math.sign(x) === 1 && Math.sign(y) === -1) {
+    // Second Quarter (90° to 180°)
+    return { x, y, quarter: 2 };
+  } else if (Math.sign(x) === -1 && Math.sign(y) === -1) {
+    // Third Quarter (180° to 270°)
+    return { x, y, quarter: 3 };
+  } else if (Math.sign(x) === -1 && Math.sign(y) === 1) {
+    // Fourth Quarter (270° to 0°)
+    return { x, y, quarter: 4 };
+  } else {
+    console.log("error: parameters of the function are not valid coordinates");
+  }
+};
+
+const calcAngleDegrees = (x, y) => {
+  return Math.round((Math.atan2(y, x) * 180) / Math.PI);
+};
+
+const getNewAngle = (e) => {
+  let cursorPosition = getCursorPosition(e);
+  // Case where no 0 in coordinates => return an object with the coordinates
+  if (isNaN(cursorPosition)) {
+    let angleInfos = getCircleQuarter(cursorPosition.x, cursorPosition.y);
+    let angle;
+    angle = calcAngleDegrees(angleInfos.y, angleInfos.x);
+
+    if (angleInfos.quarter === 1 || angleInfos.quarter === 2) {
+      return angle;
+    } else {
+      return 360 + angle;
+    }
+  } else {
+    // Case where there was a 0 in the coordinates => return the angle
+    return cursorPosition;
+  }
+};
+
+const changeInputAngle = (angle) => {
+  anglePicker.value = angle;
+};
+
+// Change dot position in the circle corresponding to the angle
+const checkRotationDirection = (angle) => {
+  if (90 < angle < 270) {
+    return angle - 90;
+  } else {
+    return -angle - 90;
+  }
+};
+
+const rotateCursor = (rotation) => {
+  let rectangleRotation = "rotate(" + rotation + "deg);";
+  let style = document.createElement("style");
+  style.type = "text/css";
+  style.innerHTML = ".rotate-rect { transform:" + rectangleRotation + "}";
+  document.getElementsByTagName("head")[0].appendChild(style);
+
+  anglePickerRect.classList.add("rotate-rect");
+};
+
+const updateAngle = (e) => {
+  let angle = getNewAngle(e);
+  changeInputAngle(angle);
+  changeBodyBackground();
+  changeGradientCode();
+  let rotation = checkRotationDirection(angle);
+  rotateCursor(rotation);
+};
+
+anglePickerCircle.addEventListener("click", (e) => updateAngle(e));
+
+/*
+ *  -------------------------------------  SWITCH EDITOR TABS ---------------------------------------
+ * */
+
+const switchActiveCode = (tab) => {
+  if (tab.classList.contains("rgb")) {
+    gradientCodeContainer.classList.remove("js-code-active");
+    rgbCodeContainer.classList.add("js-code-active");
+  } else {
+    rgbCodeContainer.classList.remove("js-code-active");
+    gradientCodeContainer.classList.add("js-code-active");
+  }
+};
+
+const changeActiveTab = (tab) => {
+  codeEditorTabs.forEach((tab) => tab.classList.remove("is-active"));
+  tab.classList.add("is-active");
+  switchActiveCode(tab);
+};
+
+codeEditorTabs.forEach((tab) =>
+  tab.addEventListener("click", (e) => changeActiveTab(e.target))
+);
+
+/*
+ *  -------------------------------------  COPY TO CLIBBOARD ---------------------------------------
+ * */
+
+// Gets all Text Nodes in every child element of 1st param
+const getTextNodesIn = (elem) => {
+  let textNodes = [];
+  d;
+  if (elem) {
+    for (let nodes = elem.childNodes, i = nodes.length; i--; ) {
+      let node = nodes[i],
+        nodeType = node.nodeType;
+      if (nodeType === 3) {
+        textNodes.push(node);
+      } else if (nodeType === 1 || nodeType === 9 || nodeType === 11) {
+        textNodes = textNodes.concat(getTextNodesIn(node));
+      }
+    }
+  }
+  return textNodes;
+};
+
+// Get Code Editor text
+const getString = () => {
+  let showedLinesCode = document.querySelector(".js-code-active");
+  let textNodes = getTextNodesIn(showedLinesCode);
+  let bgCodeString = [];
+  let finalTextArray = [];
+  let codeText;
+
+  for (let i = 0; i < textNodes.length; i++) {
+    if (textNodes[i].wholeText.trim().length !== 0) {
+      bgCodeString.push(textNodes[i].wholeText.replace(/\s+/g, " "));
+      finalTextArray = [].concat(bgCodeString).reverse();
+    }
+  }
+  codeText = finalTextArray.join("").replace(/;/g, ";\n");
+
+  return codeText;
+};
+
+const copyToClipboard = (str) => {
+  const el = document.createElement("textarea");
+  el.value = str;
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand("copy");
+  document.body.removeChild(el);
+};
+
+buttonCopy.addEventListener("click", () => copyToClipboard(getString()));
+
+/*
+ *  -----------------------------------  ANIMATIONS ON LOAD -----------------------------------------
+ * */
+
+const translation = () => {
+  let colorPickers = document.querySelectorAll(".color-picker__container");
+  colorPickers.forEach((colorPicker) =>
+    colorPicker.classList.add("js-translate-done")
+  );
+  let anglePickers = document.querySelectorAll(".js-angle-picker");
+  anglePickers.forEach((anglePicker) =>
+    anglePicker.classList.add("js-translate-done")
+  );
+  let infoContainers = document.querySelectorAll(".info__container");
+  infoContainers.forEach((infoContainer) =>
+    infoContainer.classList.add("info__container--showed")
+  );
+};
+
+let delayInMilliseconds = 700;
+
+window.addEventListener("DOMContentLoaded", () =>
+  setTimeout(() => {
+    translation();
+  }, delayInMilliseconds)
+);
+
